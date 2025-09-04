@@ -1,26 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { BarCodeScanner } from 'expo-barcode-scanner';
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { CameraView, BarcodeScanningResult, Camera } from "expo-camera";
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+type RootStackParamList = {
+  ProductDetails: { barcode: string };
+};
 
 export default function BarcodeScanner() {
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-  const [scanned, setScanned] = useState(false);
-  const [barcode, setBarcode] = useState<string | null>(null);
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   useEffect(() => {
     (async () => {
-      const { status } = await BarCodeScanner.requestPermissionsAsync();
-      setHasPermission(status === 'granted');
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      setHasPermission(status === "granted");
     })();
   }, []);
 
-  const handleBarCodeScanned = ({ data }: { data: string }) => {
-    setScanned(true);
-    setBarcode(data);
+  const handleBarCodeScanned = (result: BarcodeScanningResult) => {
+    navigation.navigate('ProductDetails', { barcode: result.data });
   };
 
   if (hasPermission === null) {
-    return <Text>Requesting for camera permission...</Text>;
+    return <Text>Requesting camera permission...</Text>;
   }
   if (hasPermission === false) {
     return <Text>No access to camera</Text>;
@@ -28,22 +32,18 @@ export default function BarcodeScanner() {
 
   return (
     <View style={styles.container}>
-      <BarCodeScanner
-        onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
+      <CameraView
         style={StyleSheet.absoluteFillObject}
+        facing="back"
+        onBarcodeScanned={handleBarCodeScanned}
+        barcodeScannerSettings={{
+          barcodeTypes: ["qr", "ean13", "code128"],
+        }}
       />
-      {barcode && <Text style={styles.barcodeText}>Scanned: {barcode}</Text>}
-      {scanned && (
-        <Text style={styles.resetText} onPress={() => setScanned(false)}>
-          Tap to scan again
-        </Text>
-      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  barcodeText: { position: 'absolute', bottom: 60, fontSize: 18, color: '#fff', backgroundColor: 'rgba(0,0,0,0.6)', padding: 6, borderRadius: 8 },
-  resetText: { position: 'absolute', bottom: 20, fontSize: 16, color: '#00f', backgroundColor: '#fff', padding: 6, borderRadius: 8 },
+  container: { flex: 1 },
 });
